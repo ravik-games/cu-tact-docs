@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Как подключить шины проверяемой макетки к тестовой системе: схема, распиновка разъёмов и команда запуска тестов.">
+<title>Схема подключения шин</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Onest:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<style>
+/* Layout: project picker, step bar, one rotated diagram. Outputs of the checked board on the left, inputs on the right, the checked breadboard in the middle. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #e5e9f1;
+  --fg: #141a2a;
+  --muted: #566079;
+  --line: #cfd6e4;
+  --in: #2457d6;
+  --out: #8a2fb0;
+  --focus: #2457d6;
+  --mac: #e3e7ef;
+  --hole: #b3bccd;
+  --panel: #eef1f7;
+  --channel: #cdd4e2;
+  --font-display: 'Unbounded', 'Onest', system-ui, sans-serif;
+  --font-body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e121b; --surface: #161b27; --surface-2: #202738; --fg: #e9ecf4; --muted: #9aa3b8;
+    --line: #2a3246; --in: #86a7ff; --out: #d8a2f2; --focus: #86a7ff;
+    --mac: #1a2132; --hole: #2d3750; --panel: #121826; --channel: #0e131d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e121b; --surface: #161b27; --surface-2: #202738; --fg: #e9ecf4; --muted: #9aa3b8;
+  --line: #2a3246; --in: #86a7ff; --out: #d8a2f2; --focus: #86a7ff;
+  --mac: #1a2132; --hole: #2d3750; --panel: #121826; --channel: #0e131d;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 400 15px/1.5 var(--font-body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 22px 40px; display: flex; flex-direction: column; gap: 14px; }
+h1 { font: 600 clamp(19px, 3.2vw, 26px)/1.2 var(--font-display); margin: 0; letter-spacing: -0.01em; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.projs { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.proj { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; }
+.proj:hover { background: var(--surface-2); }
+.proj[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.tab { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; font-weight: 500; }
+.tab:hover { background: var(--surface-2); }
+.tab[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line); font-weight: 600; }
+.tab.free { color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.dot.in { background: var(--in); } .dot.out { background: var(--out); }
+.btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn.primary:hover { opacity: .88; }
+
+.stage { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+#d { display: block; width: 100%; min-width: 760px; height: auto; }
+
+/* diagram */
+.b-body { fill: var(--mac); stroke: var(--line); stroke-width: 1.5; }
+.b-chan { fill: var(--channel); }
+.b-holes { fill: none; stroke: var(--hole); stroke-linecap: round; stroke-width: 6.5; }
+.b-rail-b { stroke: #3d6fe0; stroke-width: 2; } .b-rail-r { stroke: #d04a4a; stroke-width: 2; }
+.b-wires path { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.b-chip { fill: #2a2f3b; stroke: #5b6478; stroke-width: 1.2; }
+.b-esp { fill: #1b2f4a; }
+.b-chipt { font: 600 14px var(--font-mono); fill: #e8ebf2; text-anchor: middle; dominant-baseline: central; letter-spacing: .04em;
+  paint-order: stroke; stroke: #2a2f3b; stroke-width: 5px; stroke-linejoin: round; }  /* the label stays readable above the wires */
+.b-chipt.esp { stroke: #1b2f4a; }
+.b-usb { fill: #c8ccd4; stroke: #8d95a6; }
+.b-plate { fill: var(--surface); stroke: var(--line); }
+.d-pdot { fill: #4a5163; }
+.d-ptxt { font: 700 13px var(--font-mono); fill: #141a2a; text-anchor: middle; dominant-baseline: central; }
+
+.d-panel { fill: var(--panel); stroke: var(--hole); stroke-width: 1.5; stroke-dasharray: 7 5; }
+.d-chan { fill: var(--channel); }
+.d-rail-b { stroke: #3d6fe0; stroke-width: 2; } .d-rail-r { stroke: #d04a4a; stroke-width: 2; }
+.d-mac { fill: var(--mac); stroke: var(--line); stroke-width: 1.5; }
+.d-hole { fill: var(--hole); }
+.d-cap { font: 600 13px var(--font-body); fill: var(--fg); text-anchor: middle; }
+.d-rolebg { fill: var(--surface); stroke-width: 1.3; } .d-rolebg.in { stroke: var(--in); } .d-rolebg.out { stroke: var(--out); }
+.d-roletxt { font: 600 12px var(--font-body); text-anchor: middle; dominant-baseline: central; }
+.d-roletxt.in { fill: var(--in); } .d-roletxt.out { fill: var(--out); }
+.d-leg { font: 600 12px var(--font-body); fill: var(--muted); }
+.d-stubbg { fill: #eceff5; stroke: #aeb7ca; stroke-width: 1.2; stroke-dasharray: 5 4; }
+.d-stubtxt { font: 500 13px var(--font-body); fill: #6b7488; text-anchor: middle; dominant-baseline: central; }
+.d-name { font: 600 21px var(--font-display); fill: var(--fg); text-anchor: middle; }
+.d-hous { fill: #fff; stroke: #98a2b8; stroke-width: 1.5; }
+.d-sep { stroke: #e3e7ef; stroke-width: 1; }
+.d-pin { font: 700 14px var(--font-mono); fill: #141a2a; text-anchor: middle; dominant-baseline: central; }
+.d-sig { font: 700 14px var(--font-mono); fill: #141a2a; text-anchor: middle; dominant-baseline: central; }
+.d-none { fill: none; stroke: #a5aec0; stroke-width: 1.3; stroke-dasharray: 4 3; }
+.d-dash { font: 500 13px var(--font-mono); fill: #7c869b; text-anchor: middle; dominant-baseline: central; }
+.d-bus { font: 600 14px var(--font-display); text-anchor: middle; dominant-baseline: central; }
+/* "Шина X" is a tab on the plug housing; the housing is always white, so the tab colours do not follow the theme */
+.d-tab { fill: #fff; stroke: #98a2b8; stroke-width: 1.5; }
+.d-bus.in { fill: #2457d6; } .d-bus.out { fill: #8a2fb0; }
+.grp.free .d-tab { fill: #eceff5; stroke: #aeb7ca; }
+.grp.free .d-bus { fill: #6b7488; }
+.hit { fill: transparent; }
+.d-sub { font: 500 12px var(--font-body); fill: var(--muted); }
+.d-wu { stroke: #8c96ab; stroke-width: 9; stroke-linecap: round; }
+.d-w { stroke: #fff; stroke-width: 6; stroke-linecap: round; }
+/* pins without a signal: the cable stays opaque, just greyer */
+.d-off .d-wu { stroke: #b2bacb; }
+.d-off .d-w { stroke: #eef1f6; }
+.d-note { font: 500 13px var(--font-body); fill: var(--muted); text-anchor: middle; }
+.flow { fill: none; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1 15; animation: flow 1s linear infinite; opacity: 0; }
+.flow.in { stroke: var(--in); } .flow.out { stroke: var(--out); }
+@keyframes flow { to { stroke-dashoffset: -16; } }
+/* nothing here is translucent: unused buses are a bit greyer, only the pin text is dimmed */
+.grp { transition: filter .35s; cursor: pointer; }
+.grp.free .d-hous { fill: #eceff5; stroke: #aeb7ca; }
+.grp.free .d-ptxt, .grp.free .d-dash, .grp.free .d-note { opacity: .6; }
+/* another bus is in focus: grey it out instead of fading it */
+.grp.off { filter: grayscale(1); }
+.grp.off .d-ptxt, .grp.off .d-sig, .grp.off .d-dash, .grp.off .d-note { opacity: .55; }
+.grp.act .flow, .grp.hot .flow { opacity: 1; }
+.grp.act .rw { animation: rowin .5s both; animation-delay: calc(var(--i) * 50ms); }
+@keyframes rowin { from { opacity: .15; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+#d.c { min-width: 0; max-width: 460px; margin: 0 auto; }
+.viewbtn { align-self: flex-start; }
+@media (max-width: 720px) {
+  .wrap { padding-inline: 12px; gap: 12px; }
+  .tab { padding: 9px 12px; }
+  #play { width: 100%; }
+}
+
+/* command generator */
+.cmd { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.cmd h2 { font: 600 17px/1.3 var(--font-display); margin: 0; }
+.cmd-note { margin: -6px 0 0; color: var(--muted); font-size: 14px; }
+.cmd-note:empty { display: none; }
+.cmd-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
+.fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.fld.grow { flex: 1 1 240px; }
+.lbl { font-size: 13px; color: var(--muted); font-weight: 500; }
+.cfg { font: 500 14px var(--font-mono); padding: 8px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); overflow-wrap: anywhere; }
+.cfg.none { color: var(--muted); font-family: var(--font-body); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 8px 14px; font-weight: 500; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { background: var(--surface-2); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: 600; }
+#cmd-port { font: 500 15px var(--font-mono); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); width: 100%; }
+#cmd-port::placeholder { color: var(--muted); }
+.flags { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 20px; }
+.flag { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: start; cursor: pointer; padding: 4px 0; }
+.flag input { margin: 4px 0 0; width: 16px; height: 16px; accent-color: var(--in); }
+.flag b { font: 600 14px var(--font-mono); }
+.flag span { grid-column: 2; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.fgrp { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px 6px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 20px; }
+.fgrp > .gcap { grid-column: 1 / -1; font-size: 13px; color: var(--muted); font-weight: 500; }
+.term { display: flex; gap: 12px; align-items: flex-start; background: #0f1420; border-radius: 10px; padding: 12px 12px 12px 16px; }
+.term code { flex: 1; min-width: 0; font: 500 14px/1.6 var(--font-mono); color: #e9ecf4; user-select: all; }
+.term code span { white-space: nowrap; }
+.term code .t-cfg, .term code .t-port, .term code .t-miss { white-space: normal; overflow-wrap: anywhere; }
+.term .btn { flex: none; background: #e9ecf4; color: #0f1420; border-color: #e9ecf4; }
+.term .btn:hover { opacity: .88; }
+.t-dim { color: #8d97ae; } .t-cfg { color: #8fb4ff; } .t-port { color: #ffd479; } .t-flag { color: #7fe3b0; } .t-miss { color: #ff9a8a; }
+@media (max-width: 560px) { .term { flex-direction: column; } .term .btn { align-self: stretch; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow { animation: none; }
+  .grp { transition: none; }
+  .grp.act .rw { animation: none; }
+}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <h1>Схема подключения шин</h1>
+  <div class="projs" id="projs" role="group" aria-label="Проект"></div>
+  <div class="bar">
+    <div class="tabs" id="tabs" role="group" aria-label="Шина"></div>
+    <button class="btn primary" id="play" type="button" aria-pressed="false">Показать по шагам</button>
+  </div>
+  <button class="btn viewbtn" id="view" type="button" hidden></button>
+  <div class="stage"><svg id="d" viewBox="0 0 1120 1790" role="img" aria-label="Схема подключения шин к проверяемой макетке"></svg></div>
+  <section class="cmd" aria-labelledby="cmd-h">
+    <h2 id="cmd-h">Команда запуска теста</h2>
+    <p class="cmd-note" id="cmd-note"></p>
+    <div class="cmd-row">
+      <div class="fld"><span class="lbl">Конфиг</span><code class="cfg" id="cmd-cfg"></code></div>
+      <div class="fld"><span class="lbl" id="os-l">Операционная система</span><div class="seg" id="cmd-os" role="group" aria-labelledby="os-l"></div></div>
+      <div class="fld grow"><label class="lbl" for="cmd-port">Порт</label><input id="cmd-port" type="text" spellcheck="false" autocomplete="off" autocapitalize="off"></div>
+    </div>
+    <div class="flags" id="cmd-flags"></div>
+    <div class="term">
+      <code id="cmd-out" aria-live="polite"></code>
+      <button class="btn primary" id="cmd-copy" type="button">Скопировать</button>
+    </div>
+  </section>
+</div>
+
+<script type="application/json" id="projects-data">
+[
+  {
+    "id": "sum",
+    "name": "Сложение",
+    "config": "semester_1/adder_tests.yaml",
+    "in": [
+      ["−", "+", "A0", "A1", "A2", "A3", "B0", "B1"],
+      ["B2", "B3", "Cin", "", "", "", "", ""]
+    ],
+    "out": [
+      ["S0", "S1", "S2", "S3", "Cout", "", "", ""],
+      ["", "", "", "", "", "", "", ""]
+    ]
+  },
+  {
+    "id": "mul",
+    "name": "Умножение",
+    "config": "semester_1/multiplier_tests.yaml",
+    "in": [
+      ["−", "+", "A0", "A1", "A2", "A3", "B0", "B1"],
+      ["B2", "B3", "", "", "", "", "", ""]
+    ],
+    "out": [
+      ["OL0", "OL1", "OL2", "OL3", "OH0", "OH1", "OH2", "OH3"],
+      ["", "", "", "", "", "", "", ""]
+    ]
+  },
+  {
+    "id": "div",
+    "name": "Деление",
+    "config": null,
+    "in": [
+      ["−", "+", "A0", "A1", "A2", "A3", "B0", "B1"],
+      ["B2", "B3", "", "", "", "", "", ""]
+    ],
+    "out": [
+      ["I0", "I1", "I2", "I3", "R0", "R1", "R2", "R3"],
+      ["", "", "", "", "", "", "", ""]
+    ]
+  },
+  {
+    "id": "calc",
+    "name": "Калькулятор",
+    "config": null,
+    "in": [
+      ["−", "+", "A0", "A1", "A2", "A3", "B0", "B1"],
+      ["B2", "B3", "OP0", "OP1", "RST", "CLK", "MODE", ""]
+    ],
+    "out": [
+      ["O0", "O1", "O2", "O3", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""]
+    ]
+  },
+  {
+    "id": "dff",
+    "name": "D-триггер",
+    "config": null,
+    "in": [
+      ["−", "+", "CLK", "D", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""]
+    ],
+    "out": [
+      ["Q", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""]
+    ]
+  }
+]
+</script>
+
+<!--
+  Генератор команды запуска (блок под схемой). Всё, что можно захотеть менять, лежит в JSON:
+
+  1) Конфиг схемы: поле "config" у проекта в #projects-data, путь считается от "configDir".
+       "config": "semester_1/adder_tests.yaml"   - конфиг есть
+       "config": null                            - конфига пока нет (кнопка "Скопировать" отключена)
+     Новый проект - просто ещё один объект в #projects-data с полем "config".
+  2) Порты по умолчанию и список ОС: "os" в #cmd-data.
+  3) Флаги: "flags" в #cmd-data. Флаги с одинаковым "group" взаимоисключающие
+     (в "groups" лежит подпись группы). Новый флаг - ещё одна строка {"flag": "...", "desc": "..."}.
+-->
+<script type="application/json" id="cmd-data">
+{
+  "python": "python",
+  "script": "maket_tester/tester.py",
+  "configDir": "maket_tester/configs/",
+  "os": [
+    { "id": "windows", "name": "Windows", "port": "COM3" },
+    { "id": "mac",     "name": "macOS",   "port": "/dev/cu.usbmodem1101" },
+    { "id": "linux",   "name": "Linux",   "port": "/dev/ttyACM0" }
+  ],
+  "groups": {
+    "fail": "Если тест упал (без флага решает YAML)"
+  },
+  "flags": [
+    { "flag": "--show-passes",      "desc": "печатать каждый успешный тест" },
+    { "flag": "--raw",              "desc": "показывать низкоуровневый обмен" },
+    { "flag": "--no-color",         "desc": "отключить ANSI-цвета" },
+    { "flag": "--stop-on-fail",     "desc": "остановиться после первого FAIL, игнорируя YAML", "group": "fail" },
+    { "flag": "--not-stop-on-fail", "desc": "выполнить все наборы, игнорируя YAML",            "group": "fail" }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  var RH = 26, W = 1120, H = 1790;
+  var BOARD = "<rect class=\"b-body\" x=\"287.0\" y=\"59.5\" width=\"546.0\" height=\"1691.0\" rx=\"10\"/><rect class=\"b-chan\" x=\"544.1\" y=\"59.5\" width=\"26.0\" height=\"1691.0\"/><line class=\"b-rail-b\" x1=\"295.7\" x2=\"295.7\" y1=\"65.5\" y2=\"1744.4\"/><line class=\"b-rail-r\" x1=\"356.3\" x2=\"356.3\" y1=\"65.5\" y2=\"1744.4\"/><line class=\"b-rail-b\" x1=\"763.7\" x2=\"763.7\" y1=\"65.5\" y2=\"1744.4\"/><line class=\"b-rail-r\" x1=\"824.3\" x2=\"824.3\" y1=\"65.5\" y2=\"1744.4\"/><path class=\"b-holes\" d=\"M703.0 1711.0h0M677.0 1711.0h0M651.0 1711.0h0M625.0 1711.0h0M599.0 1711.0h0M521.0 1711.0h0M495.0 1711.0h0M469.0 1711.0h0M443.0 1711.0h0M417.0 1711.0h0M703.0 1685.0h0M677.0 1685.0h0M651.0 1685.0h0M625.0 1685.0h0M599.0 1685.0h0M521.0 1685.0h0M495.0 1685.0h0M469.0 1685.0h0M443.0 1685.0h0M417.0 1685.0h0M703.0 1659.0h0M677.0 1659.0h0M651.0 1659.0h0M625.0 1659.0h0M599.0 1659.0h0M521.0 1659.0h0M495.0 1659.0h0M469.0 1659.0h0M443.0 1659.0h0M417.0 1659.0h0M703.0 1633.0h0M677.0 1633.0h0M651.0 1633.0h0M625.0 1633.0h0M599.0 1633.0h0M521.0 1633.0h0M495.0 1633.0h0M469.0 1633.0h0M443.0 1633.0h0M417.0 1633.0h0M703.0 1607.0h0M677.0 1607.0h0M651.0 1607.0h0M625.0 1607.0h0M599.0 1607.0h0M521.0 1607.0h0M495.0 1607.0h0M469.0 1607.0h0M443.0 1607.0h0M417.0 1607.0h0M703.0 1581.0h0M677.0 1581.0h0M651.0 1581.0h0M625.0 1581.0h0M599.0 1581.0h0M521.0 1581.0h0M495.0 1581.0h0M469.0 1581.0h0M443.0 1581.0h0M417.0 1581.0h0M703.0 1555.0h0M677.0 1555.0h0M651.0 1555.0h0M625.0 1555.0h0M599.0 1555.0h0M521.0 1555.0h0M495.0 1555.0h0M469.0 1555.0h0M443.0 1555.0h0M417.0 1555.0h0M703.0 1529.0h0M677.0 1529.0h0M651.0 1529.0h0M625.0 1529.0h0M599.0 1529.0h0M521.0 1529.0h0M495.0 1529.0h0M469.0 1529.0h0M443.0 1529.0h0M417.0 1529.0h0M703.0 1503.0h0M677.0 1503.0h0M651.0 1503.0h0M625.0 1503.0h0M599.0 1503.0h0M521.0 1503.0h0M495.0 1503.0h0M469.0 1503.0h0M443.0 1503.0h0M417.0 1503.0h0M703.0 1477.0h0M677.0 1477.0h0M651.0 1477.0h0M625.0 1477.0h0M599.0 1477.0h0M521.0 1477.0h0M495.0 1477.0h0M469.0 1477.0h0M443.0 1477.0h0M417.0 1477.0h0M703.0 1451.0h0M677.0 1451.0h0M651.0 1451.0h0M625.0 1451.0h0M599.0 1451.0h0M521.0 1451.0h0M495.0 1451.0h0M469.0 1451.0h0M443.0 1451.0h0M417.0 1451.0h0M703.0 1425.0h0M677.0 1425.0h0M651.0 1425.0h0M625.0 1425.0h0M599.0 1425.0h0M521.0 1425.0h0M495.0 1425.0h0M469.0 1425.0h0M443.0 1425.0h0M417.0 1425.0h0M703.0 1399.0h0M677.0 1399.0h0M651.0 1399.0h0M625.0 1399.0h0M599.0 1399.0h0M521.0 1399.0h0M495.0 1399.0h0M469.0 1399.0h0M443.0 1399.0h0M417.0 1399.0h0M703.0 1373.0h0M677.0 1373.0h0M651.0 1373.0h0M625.0 1373.0h0M599.0 1373.0h0M521.0 1373.0h0M495.0 1373.0h0M469.0 1373.0h0M443.0 1373.0h0M417.0 1373.0h0M703.0 1347.0h0M677.0 1347.0h0M651.0 1347.0h0M625.0 1347.0h0M599.0 1347.0h0M521.0 1347.0h0M495.0 1347.0h0M469.0 1347.0h0M443.0 1347.0h0M417.0 1347.0h0M703.0 1321.0h0M677.0 1321.0h0M651.0 1321.0h0M625.0 1321.0h0M599.0 1321.0h0M521.0 1321.0h0M495.0 1321.0h0M469.0 1321.0h0M443.0 1321.0h0M417.0 1321.0h0M703.0 1295.0h0M677.0 1295.0h0M651.0 1295.0h0M625.0 1295.0h0M599.0 1295.0h0M521.0 1295.0h0M495.0 1295.0h0M469.0 1295.0h0M443.0 1295.0h0M417.0 1295.0h0M703.0 1269.0h0M677.0 1269.0h0M651.0 1269.0h0M625.0 1269.0h0M599.0 1269.0h0M521.0 1269.0h0M495.0 1269.0h0M469.0 1269.0h0M443.0 1269.0h0M417.0 1269.0h0M703.0 1243.0h0M677.0 1243.0h0M651.0 1243.0h0M625.0 1243.0h0M599.0 1243.0h0M521.0 1243.0h0M495.0 1243.0h0M469.0 1243.0h0M443.0 1243.0h0M417.0 1243.0h0M703.0 1217.0h0M677.0 1217.0h0M651.0 1217.0h0M625.0 1217.0h0M599.0 1217.0h0M521.0 1217.0h0M495.0 1217.0h0M469.0 1217.0h0M443.0 1217.0h0M417.0 1217.0h0M703.0 1191.0h0M677.0 1191.0h0M651.0 1191.0h0M625.0 1191.0h0M599.0 1191.0h0M521.0 1191.0h0M495.0 1191.0h0M469.0 1191.0h0M443.0 1191.0h0M417.0 1191.0h0M703.0 1165.0h0M677.0 1165.0h0M651.0 1165.0h0M625.0 1165.0h0M599.0 1165.0h0M521.0 1165.0h0M495.0 1165.0h0M469.0 1165.0h0M443.0 1165.0h0M417.0 1165.0h0M703.0 1139.0h0M677.0 1139.0h0M651.0 1139.0h0M625.0 1139.0h0M599.0 1139.0h0M521.0 1139.0h0M495.0 1139.0h0M469.0 1139.0h0M443.0 1139.0h0M417.0 1139.0h0M703.0 1113.0h0M677.0 1113.0h0M651.0 1113.0h0M625.0 1113.0h0M599.0 1113.0h0M521.0 1113.0h0M495.0 1113.0h0M469.0 1113.0h0M443.0 1113.0h0M417.0 1113.0h0M703.0 1087.0h0M677.0 1087.0h0M651.0 1087.0h0M625.0 1087.0h0M599.0 1087.0h0M521.0 1087.0h0M495.0 1087.0h0M469.0 1087.0h0M443.0 1087.0h0M417.0 1087.0h0M703.0 1061.0h0M677.0 1061.0h0M651.0 1061.0h0M625.0 1061.0h0M599.0 1061.0h0M521.0 1061.0h0M495.0 1061.0h0M469.0 1061.0h0M443.0 1061.0h0M417.0 1061.0h0M703.0 1035.0h0M677.0 1035.0h0M651.0 1035.0h0M625.0 1035.0h0M599.0 1035.0h0M521.0 1035.0h0M495.0 1035.0h0M469.0 1035.0h0M443.0 1035.0h0M417.0 1035.0h0M703.0 1009.0h0M677.0 1009.0h0M651.0 1009.0h0M625.0 1009.0h0M599.0 1009.0h0M521.0 1009.0h0M495.0 1009.0h0M469.0 1009.0h0M443.0 1009.0h0M417.0 1009.0h0M703.0 983.0h0M677.0 983.0h0M651.0 983.0h0M625.0 983.0h0M599.0 983.0h0M521.0 983.0h0M495.0 983.0h0M469.0 983.0h0M443.0 983.0h0M417.0 983.0h0M703.0 957.0h0M677.0 957.0h0M651.0 957.0h0M625.0 957.0h0M599.0 957.0h0M521.0 957.0h0M495.0 957.0h0M469.0 957.0h0M443.0 957.0h0M417.0 957.0h0M703.0 931.0h0M677.0 931.0h0M651.0 931.0h0M625.0 931.0h0M599.0 931.0h0M521.0 931.0h0M495.0 931.0h0M469.0 931.0h0M443.0 931.0h0M417.0 931.0h0M703.0 905.0h0M677.0 905.0h0M651.0 905.0h0M625.0 905.0h0M599.0 905.0h0M521.0 905.0h0M495.0 905.0h0M469.0 905.0h0M443.0 905.0h0M417.0 905.0h0M703.0 879.0h0M677.0 879.0h0M651.0 879.0h0M625.0 879.0h0M599.0 879.0h0M521.0 879.0h0M495.0 879.0h0M469.0 879.0h0M443.0 879.0h0M417.0 879.0h0M703.0 853.0h0M677.0 853.0h0M651.0 853.0h0M625.0 853.0h0M599.0 853.0h0M521.0 853.0h0M495.0 853.0h0M469.0 853.0h0M443.0 853.0h0M417.0 853.0h0M703.0 827.0h0M677.0 827.0h0M651.0 827.0h0M625.0 827.0h0M599.0 827.0h0M521.0 827.0h0M495.0 827.0h0M469.0 827.0h0M443.0 827.0h0M417.0 827.0h0M703.0 801.0h0M677.0 801.0h0M651.0 801.0h0M625.0 801.0h0M599.0 801.0h0M521.0 801.0h0M495.0 801.0h0M469.0 801.0h0M443.0 801.0h0M417.0 801.0h0M703.0 775.0h0M677.0 775.0h0M651.0 775.0h0M625.0 775.0h0M599.0 775.0h0M521.0 775.0h0M495.0 775.0h0M469.0 775.0h0M443.0 775.0h0M417.0 775.0h0M703.0 749.0h0M677.0 749.0h0M651.0 749.0h0M625.0 749.0h0M599.0 749.0h0M521.0 749.0h0M495.0 749.0h0M469.0 749.0h0M443.0 749.0h0M417.0 749.0h0M703.0 723.0h0M677.0 723.0h0M651.0 723.0h0M625.0 723.0h0M599.0 723.0h0M521.0 723.0h0M495.0 723.0h0M469.0 723.0h0M443.0 723.0h0M417.0 723.0h0M703.0 697.0h0M677.0 697.0h0M651.0 697.0h0M625.0 697.0h0M599.0 697.0h0M521.0 697.0h0M495.0 697.0h0M469.0 697.0h0M443.0 697.0h0M417.0 697.0h0M703.0 671.0h0M677.0 671.0h0M651.0 671.0h0M625.0 671.0h0M599.0 671.0h0M521.0 671.0h0M495.0 671.0h0M469.0 671.0h0M443.0 671.0h0M417.0 671.0h0M703.0 645.0h0M677.0 645.0h0M651.0 645.0h0M625.0 645.0h0M599.0 645.0h0M521.0 645.0h0M495.0 645.0h0M469.0 645.0h0M443.0 645.0h0M417.0 645.0h0M703.0 619.0h0M677.0 619.0h0M651.0 619.0h0M625.0 619.0h0M599.0 619.0h0M521.0 619.0h0M495.0 619.0h0M469.0 619.0h0M443.0 619.0h0M417.0 619.0h0M703.0 593.0h0M677.0 593.0h0M651.0 593.0h0M625.0 593.0h0M599.0 593.0h0M521.0 593.0h0M495.0 593.0h0M469.0 593.0h0M443.0 593.0h0M417.0 593.0h0M703.0 567.0h0M677.0 567.0h0M651.0 567.0h0M625.0 567.0h0M599.0 567.0h0M521.0 567.0h0M495.0 567.0h0M469.0 567.0h0M443.0 567.0h0M417.0 567.0h0M703.0 541.0h0M677.0 541.0h0M651.0 541.0h0M625.0 541.0h0M599.0 541.0h0M521.0 541.0h0M495.0 541.0h0M469.0 541.0h0M443.0 541.0h0M417.0 541.0h0M703.0 515.0h0M677.0 515.0h0M651.0 515.0h0M625.0 515.0h0M599.0 515.0h0M521.0 515.0h0M495.0 515.0h0M469.0 515.0h0M443.0 515.0h0M417.0 515.0h0M703.0 489.0h0M677.0 489.0h0M651.0 489.0h0M625.0 489.0h0M599.0 489.0h0M521.0 489.0h0M495.0 489.0h0M469.0 489.0h0M443.0 489.0h0M417.0 489.0h0M703.0 463.0h0M677.0 463.0h0M651.0 463.0h0M625.0 463.0h0M599.0 463.0h0M521.0 463.0h0M495.0 463.0h0M469.0 463.0h0M443.0 463.0h0M417.0 463.0h0M703.0 437.0h0M677.0 437.0h0M651.0 437.0h0M625.0 437.0h0M599.0 437.0h0M521.0 437.0h0M495.0 437.0h0M469.0 437.0h0M443.0 437.0h0M417.0 437.0h0M703.0 411.0h0M677.0 411.0h0M651.0 411.0h0M625.0 411.0h0M599.0 411.0h0M521.0 411.0h0M495.0 411.0h0M469.0 411.0h0M443.0 411.0h0M417.0 411.0h0M703.0 385.0h0M677.0 385.0h0M651.0 385.0h0M625.0 385.0h0M599.0 385.0h0M521.0 385.0h0M495.0 385.0h0M469.0 385.0h0M443.0 385.0h0M417.0 385.0h0M703.0 359.0h0M677.0 359.0h0M651.0 359.0h0M625.0 359.0h0M599.0 359.0h0M521.0 359.0h0M495.0 359.0h0M469.0 359.0h0M443.0 359.0h0M417.0 359.0h0M703.0 333.0h0M677.0 333.0h0M651.0 333.0h0M625.0 333.0h0M599.0 333.0h0M521.0 333.0h0M495.0 333.0h0M469.0 333.0h0M443.0 333.0h0M417.0 333.0h0M703.0 307.0h0M677.0 307.0h0M651.0 307.0h0M625.0 307.0h0M599.0 307.0h0M521.0 307.0h0M495.0 307.0h0M469.0 307.0h0M443.0 307.0h0M417.0 307.0h0M703.0 281.0h0M677.0 281.0h0M651.0 281.0h0M625.0 281.0h0M599.0 281.0h0M521.0 281.0h0M495.0 281.0h0M469.0 281.0h0M443.0 281.0h0M417.0 281.0h0M703.0 255.0h0M677.0 255.0h0M651.0 255.0h0M625.0 255.0h0M599.0 255.0h0M521.0 255.0h0M495.0 255.0h0M469.0 255.0h0M443.0 255.0h0M417.0 255.0h0M703.0 229.0h0M677.0 229.0h0M651.0 229.0h0M625.0 229.0h0M599.0 229.0h0M521.0 229.0h0M495.0 229.0h0M469.0 229.0h0M443.0 229.0h0M417.0 229.0h0M703.0 203.0h0M677.0 203.0h0M651.0 203.0h0M625.0 203.0h0M599.0 203.0h0M521.0 203.0h0M495.0 203.0h0M469.0 203.0h0M443.0 203.0h0M417.0 203.0h0M703.0 177.0h0M677.0 177.0h0M651.0 177.0h0M625.0 177.0h0M599.0 177.0h0M521.0 177.0h0M495.0 177.0h0M469.0 177.0h0M443.0 177.0h0M417.0 177.0h0M703.0 151.0h0M677.0 151.0h0M651.0 151.0h0M625.0 151.0h0M599.0 151.0h0M521.0 151.0h0M495.0 151.0h0M469.0 151.0h0M443.0 151.0h0M417.0 151.0h0M703.0 125.0h0M677.0 125.0h0M651.0 125.0h0M625.0 125.0h0M599.0 125.0h0M521.0 125.0h0M495.0 125.0h0M469.0 125.0h0M443.0 125.0h0M417.0 125.0h0M703.0 99.0h0M677.0 99.0h0M651.0 99.0h0M625.0 99.0h0M599.0 99.0h0M521.0 99.0h0M495.0 99.0h0M469.0 99.0h0M443.0 99.0h0M417.0 99.0h0M807.0 1659.0h0M781.0 1659.0h0M339.0 1659.0h0M313.0 1659.0h0M807.0 1632.9h0M781.0 1632.9h0M339.0 1632.9h0M313.0 1632.9h0M807.0 1607.0h0M781.0 1607.0h0M339.0 1607.0h0M313.0 1607.0h0M807.0 1580.9h0M781.0 1580.9h0M339.0 1580.9h0M313.0 1580.9h0M807.0 1555.0h0M781.0 1555.0h0M339.0 1555.0h0M313.0 1555.0h0M807.0 1503.0h0M781.0 1503.0h0M339.0 1503.0h0M313.0 1503.0h0M807.0 1477.0h0M781.0 1477.0h0M339.0 1477.0h0M313.0 1477.0h0M807.0 1451.0h0M781.0 1451.0h0M339.0 1451.0h0M313.0 1451.0h0M807.0 1425.0h0M781.0 1425.0h0M339.0 1425.0h0M313.0 1425.0h0M807.0 1399.0h0M781.0 1399.0h0M339.0 1399.0h0M313.0 1399.0h0M807.0 1347.0h0M781.0 1347.0h0M339.0 1347.0h0M313.0 1347.0h0M807.0 1321.0h0M781.0 1321.0h0M339.0 1321.0h0M313.0 1321.0h0M807.0 1295.0h0M781.0 1295.0h0M339.0 1295.0h0M313.0 1295.0h0M807.0 1269.0h0M781.0 1269.0h0M339.0 1269.0h0M313.0 1269.0h0M807.0 1243.0h0M781.0 1243.0h0M339.0 1243.0h0M313.0 1243.0h0M807.0 1191.0h0M781.0 1191.0h0M339.0 1191.0h0M313.0 1191.0h0M807.0 1165.0h0M781.0 1165.0h0M339.0 1165.0h0M313.0 1165.0h0M807.0 1139.0h0M781.0 1139.0h0M339.0 1139.0h0M313.0 1139.0h0M807.0 1113.0h0M781.0 1113.0h0M339.0 1113.0h0M313.0 1113.0h0M807.0 1087.0h0M781.0 1087.0h0M339.0 1087.0h0M313.0 1087.0h0M807.0 1035.0h0M781.0 1035.0h0M339.0 1035.0h0M313.0 1035.0h0M807.0 1009.0h0M781.0 1009.0h0M339.0 1009.0h0M313.0 1009.0h0M807.0 983.0h0M781.0 983.0h0M339.0 983.0h0M313.0 983.0h0M807.0 957.0h0M781.0 957.0h0M339.0 957.0h0M313.0 957.0h0M807.0 931.0h0M781.0 931.0h0M339.0 931.0h0M313.0 931.0h0M807.0 879.0h0M781.0 879.0h0M339.0 879.0h0M313.0 879.0h0M807.0 853.0h0M781.0 853.0h0M339.0 853.0h0M313.0 853.0h0M807.0 827.0h0M781.0 827.0h0M339.0 827.0h0M313.0 827.0h0M807.0 801.0h0M781.0 801.0h0M339.0 801.0h0M313.0 801.0h0M807.0 775.0h0M781.0 775.0h0M339.0 775.0h0M313.0 775.0h0M807.0 723.0h0M781.0 723.0h0M339.0 723.0h0M313.0 723.0h0M807.0 697.0h0M781.0 697.0h0M339.0 697.0h0M313.0 697.0h0M807.0 671.0h0M781.0 671.0h0M339.0 671.0h0M313.0 671.0h0M807.0 645.0h0M781.0 645.0h0M339.0 645.0h0M313.0 645.0h0M807.0 619.0h0M781.0 619.0h0M339.0 619.0h0M313.0 619.0h0M807.0 567.0h0M781.0 567.0h0M339.0 567.0h0M313.0 567.0h0M807.0 541.0h0M781.0 541.0h0M339.0 541.0h0M313.0 541.0h0M807.0 515.0h0M781.0 515.0h0M339.0 515.0h0M313.0 515.0h0M807.0 489.0h0M781.0 489.0h0M339.0 489.0h0M313.0 489.0h0M807.0 463.0h0M781.0 463.0h0M339.0 463.0h0M313.0 463.0h0M807.0 411.0h0M781.0 411.0h0M339.0 411.0h0M313.0 411.0h0M807.0 385.0h0M781.0 385.0h0M339.0 385.0h0M313.0 385.0h0M807.0 359.0h0M781.0 359.0h0M339.0 359.0h0M313.0 359.0h0M807.0 333.0h0M781.0 333.0h0M339.0 333.0h0M313.0 333.0h0M807.0 307.0h0M781.0 307.0h0M339.0 307.0h0M313.0 307.0h0M807.0 255.0h0M781.0 255.0h0M339.0 255.0h0M313.0 255.0h0M807.0 229.0h0M781.0 229.0h0M339.0 229.0h0M313.0 229.0h0M807.0 203.0h0M781.0 203.0h0M339.0 203.0h0M313.0 203.0h0M807.0 177.0h0M781.0 177.0h0M339.0 177.0h0M313.0 177.0h0M807.0 151.0h0M781.0 151.0h0M339.0 151.0h0M313.0 151.0h0\"/><rect class=\"b-chip\" x=\"512.7\" y=\"736.0\" width=\"94.6\" height=\"364.0\" rx=\"4\"/><rect class=\"b-chip\" x=\"512.7\" y=\"1100.0\" width=\"94.6\" height=\"364.0\" rx=\"4\"/><rect class=\"b-chip b-esp\" x=\"476.9\" y=\"1490.0\" width=\"192.1\" height=\"208.0\" rx=\"4\"/><rect class=\"b-usb\" x=\"539.8\" y=\"1698.0\" width=\"66.4\" height=\"56.4\" rx=\"3\"/><g class=\"b-wires\"><path stroke=\"#fff800\" d=\"M677.0 255.0H589.0Q583.0 255.0 583.0 261.0V1237.0Q583.0 1243.0 577.0 1243.0H495.0M495.0 1217.0H584.0Q590.0 1217.0 590.0 1211.0V287.0Q590.0 281.0 596.0 281.0H677.0M677.0 307.0H582.0Q576.0 307.0 576.0 313.0V1185.0Q576.0 1191.0 570.0 1191.0H495.0M495.0 1165.0H563.0Q569.0 1165.0 569.0 1159.0V339.0Q569.0 333.0 575.0 333.0H677.0\"/><path stroke=\"#ef6100\" d=\"M469.0 1139.0H556.0Q562.0 1139.0 562.0 1133.0V365.0Q562.0 359.0 568.0 359.0H651.0M495.0 1113.0H599.0Q605.0 1113.0 605.0 1107.0V391.0Q605.0 385.0 611.0 385.0H677.0M599.0 411.0H606.0Q612.0 411.0 612.0 417.0V1107.0Q612.0 1113.0 618.0 1113.0H625.0M625.0 437.0H632.0Q638.0 437.0 638.0 443.0V1133.0Q638.0 1139.0 644.0 1139.0H651.0M599.0 567.0H625.0Q631.0 567.0 631.0 573.0V1237.0Q631.0 1243.0 637.0 1243.0H651.0M651.0 489.0H658.0Q664.0 489.0 664.0 495.0V1159.0Q664.0 1165.0 670.0 1165.0H677.0M599.0 541.0H613.0Q619.0 541.0 619.0 547.0V1214.0Q619.0 1217.0 622.0 1217.0H625.0M599.0 593.0H639.0Q645.0 593.0 645.0 599.0V1263.0Q645.0 1269.0 651.0 1269.0H677.0M703.0 931.0H561.0Q555.0 931.0 555.0 925.0V261.0Q555.0 255.0 549.0 255.0H443.0M599.0 619.0H651.0Q657.0 619.0 657.0 625.0V1289.0Q657.0 1295.0 663.0 1295.0H703.0M677.0 515.0H678.0Q683.0 515.0 683.0 520.0V1186.0Q683.0 1191.0 688.0 1191.0H703.0M443.0 281.0H542.0Q548.0 281.0 548.0 287.0V899.0Q548.0 905.0 554.0 905.0H703.0M703.0 879.0H547.0Q541.0 879.0 541.0 873.0V313.0Q541.0 307.0 535.0 307.0H443.0M703.0 853.0H540.0Q534.0 853.0 534.0 847.0V339.0Q534.0 333.0 528.0 333.0H443.0\"/><path stroke=\"#25cc35\" d=\"M417.0 1061.0L416.8 1607.0M443.0 1035.0L443.4 1477.5M677.5 1477.5L677.0 1685.0M416.8 1607.0L443.0 1607.0M443.4 1477.5L677.5 1477.5\"/><path stroke=\"#cc1414\" d=\"M495.0 359.0H521.0Q527.0 359.0 527.0 365.0V821.0Q527.0 827.0 533.0 827.0H703.0M469.0 385.0H509.0Q515.0 385.0 515.0 391.0V795.0Q515.0 801.0 521.0 801.0H703.0M443.0 411.0H502.0Q508.0 411.0 508.0 417.0V769.0Q508.0 775.0 514.0 775.0H703.0M443.0 437.0H495.0Q501.0 437.0 501.0 443.0V743.0Q501.0 749.0 507.0 749.0H703.0M807.0 1035.0L807.2 1087.0M677.0 645.0L677.5 696.5M807.0 1347.0L807.2 1373.2M677.5 696.5L807.0 697.0M807.2 1373.2L651.0 1373.0M807.0 1008.9L703.0 1009.0M495.0 1321.0L339.0 1320.9M469.0 1633.0L339.0 1632.9M469.0 957.0L339.0 957.0M807.2 1087.0L703.0 1087.0M807.0 151.0L339.0 151.0\"/><path stroke=\"#8c3b00\" d=\"M495 489H443Q437 489 437 495V743Q437 749 431 749H417M495 515H450Q444 515 444 521V769Q444 775 438 775H417M495 541H457Q451 541 451 547V795Q451 801 445 801H417M495 567H464Q458 567 458 573V821Q458 827 452 827H417M495 593H471Q465 593 465 599V847Q465 853 459 853H417M495 619H478Q472 619 472 625V873Q472 879 466 879H417M495 645H485Q479 645 479 651V899Q479 905 473 905H417M495 671H492Q486 671 486 677V925Q486 931 480 931H417\"/><path stroke=\"#999999\" d=\"M703.0 1477.0L703.0 1685.0M469.0 1425.0L469.0 1607.0M495.0 1477.0L495.0 1399.0\"/><path stroke=\"#418dd9\" d=\"M781.0 1008.9L780.6 1061.5M651.0 671.0L650.8 723.2M780.6 1061.5L703.0 1061.0M650.8 723.2L781.0 723.0M781.0 1424.9L625.0 1425.0M469.0 1659.0L313.0 1658.9M625.0 1451.0L781.0 1450.9M781.0 1398.9L625.0 1399.0M469.0 983.0L313.0 982.9M469.0 1347.0L313.0 1346.9M781.0 1035.0L703.0 1035.0M313.0 177.0L781.0 177.0\"/></g><text class=\"b-chipt\" transform=\"translate(524.0 985.0) rotate(-90)\">MCP23017 · IC2</text><text class=\"b-chipt\" transform=\"translate(524.0 1385.0) rotate(-90)\">MCP23017 · IC1</text><text class=\"b-chipt esp\" transform=\"translate(573.0 1594.0) rotate(-90)\">ESP32-C3</text><rect class=\"b-plate\" x=\"476.0\" y=\"96\" width=\"168\" height=\"28\" rx=\"8\"/><text class=\"d-cap\" x=\"560.0\" y=\"114\">Тестовая система</text>";
+  var range = function (a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; };
+  /* pins are listed left to right as in the Fritzing photo */
+  var BUSES = [
+    { id: 1, role: 'in',  pins: ['GND', 'VDD'].concat(range(0, 5).map(function (n) { return 'I' + n; })) },
+    { id: 2, role: 'in',  pins: range(6, 13).map(function (n) { return 'I' + n; }) },
+    { id: 3, role: 'out', pins: range(0, 7).reverse().map(function (n) { return 'O' + n; }) },
+    { id: 4, role: 'out', pins: range(8, 15).reverse().map(function (n) { return 'O' + n; }) }
+  ];
+  /* wide view, rotated: outputs on the left, inputs on the right. y0 is the first pin: column 57 (bus 3, bus 2) and column 48 (bus 4, bus 1) */
+  var GROUPS = [
+    { bus: 3, side: 'L', y0: 255, name: 'Выходы, разъём 1' },
+    { bus: 4, side: 'L', y0: 489, name: 'Выходы, разъём 2' },
+    { bus: 2, side: 'R', y0: 255, name: 'Входы, разъём 2' },
+    { bus: 1, side: 'R', y0: 489, name: 'Входы, разъём 1' }
+  ];
+  /* lane colours follow the position in the connector, as in the ТЗ pictures */
+  var PAL = {
+    in1: ['#4db8ff', '#ff6a3d', '#b6e338', '#5fc46a', '#2ee0a0', '#ffd43b', '#a3d62c', '#6cc27a'],
+    in2: ['#7ff0c4', '#ffe066', '#c3e84a', '#6cc27a', '#2ee0a0', '#ffd43b', '#a3d62c', '#6cc27a'],
+    out: ['#ff5fae', '#4fb9cc', '#ffab80', '#9d9bf5', '#ff63c1', '#4fb9cc', '#ffab80', '#9d9bf5']
+  };
+
+  var ge = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+
+  var PROJECTS = JSON.parse(ge('projects-data').textContent);
+  var cur = 0, active = 0, timer = null;
+  var svg = ge('d'), tabsEl = ge('tabs'), projsEl = ge('projs'), playBtn = ge('play');
+
+  function connOf(id) {
+    var p = PROJECTS[cur];
+    return id === 1 ? p.in[0] : id === 2 ? p.in[1] : p.out[id - 3];
+  }
+  function pinNo(b, i) { return b.role === 'out' ? 8 - i : i + 1; }
+  function sigAt(b, k) { var v = connOf(b.id)[k - 1]; return v == null ? '' : String(v).trim(); }
+  function colorAt(b, k) { return (b.id === 1 ? PAL.in1 : b.id === 2 ? PAL.in2 : PAL.out)[k - 1]; }
+  function isUsed(b) { for (var k = 1; k <= 8; k++) if (sigAt(b, k)) return true; return false; }
+  function usedIds() { return BUSES.filter(isUsed).map(function (b) { return b.id; }); }
+
+  var TAB_H = 22, HH = 8 * RH;     /* height of the "Шина X" tab and of one plug housing */
+
+  /* geometry of one group; y0 is the centre of its first pin row */
+  function geoWide(g) {
+    var left = g.side === 'L';
+    var hx = left ? 417 : 703;                 /* pin column of the header on the test breadboard */
+    var px = left ? hx - 92 : hx - 15;         /* plug housing sits on the header and reaches outwards */
+    var mh = left ? 44 : 988;                  /* connector on the checked breadboard */
+    return { y0: g.y0, mh: mh, px: px, hx: hx, tx: left ? hx - 45 : hx + 45,
+      cA: left ? 132 : px + 107, cB: left ? px : 988,
+      capX: mh + 44, capAnchor: 'middle', noteX: left ? 220 : 900 };
+  }
+  /* phone layout: every connector on the left, every plug on the right, groups stacked */
+  function geoCompact(b, y0) {
+    var mh = 8, px = 277, out = b.role === 'out';
+    return { y0: y0, mh: mh, px: px, hx: px + 15, tx: px + 60,
+      cA: out ? mh + 88 : px, cB: out ? px : mh + 88,
+      capX: mh, capAnchor: 'start', slim: true };
+  }
+
+  function groupSVG(g, G) {
+    var b = BUSES[g.bus - 1], used = isUsed(b), y0 = G.y0, top = y0 - 13, mh = G.mh, px = G.px;
+    var slim = G.slim && !used;
+    var s = '<g id="g-' + b.id + '" class="grp' + (used ? '' : ' free') + '" data-bus="' + b.id + '">';
+    /* invisible hit area, so the whole group reacts to hover and taps */
+    var hx0 = Math.min(mh, px) - 4, hx1 = Math.max(mh + 88, px + 107) + 4;
+    s += '<rect class="hit" x="' + hx0 + '" y="' + (top - TAB_H - 4) + '" width="' + (hx1 - hx0) + '" height="' + ((slim ? 36 : HH) + TAB_H + 4) + '"/>';
+
+    if (slim) {
+      s += '<rect class="d-stubbg" x="' + mh + '" y="' + top + '" width="' + (px + 107 - mh) + '" height="36" rx="10"/>';
+      s += '<text class="d-stubtxt" x="' + ((mh + px + 107) / 2) + '" y="' + (top + 18) + '">не используется</text>';
+    } else {
+      s += '<rect class="d-hous" x="' + mh + '" y="' + top + '" width="88" height="' + HH + '" rx="8"/>';
+      for (var r = 0; r < 8; r++) {
+        var i = 7 - r, k = pinNo(b, i), sig = sigAt(b, k), on = sig !== '';
+        var yc = y0 + r * RH;
+        s += '<g class="rw" style="--i:' + r + '">';
+        if (r > 0) s += '<line class="d-sep" x1="' + (mh + 6) + '" x2="' + (mh + 82) + '" y1="' + (yc - RH / 2) + '" y2="' + (yc - RH / 2) + '"/>';
+        if (on) s += '<rect x="' + (mh + 8) + '" y="' + (yc - 11) + '" width="72" height="22" rx="6" fill="' + colorAt(b, k) + '"/><text class="d-sig" x="' + (mh + 44) + '" y="' + yc + '">' + esc(sig) + '</text>';
+        else s += '<rect class="d-none" x="' + (mh + 8) + '" y="' + (yc - 11) + '" width="72" height="22" rx="6"/><text class="d-dash" x="' + (mh + 44) + '" y="' + yc + '">—</text>';
+        if (used) {
+          var d = 'M' + G.cA + ' ' + yc + 'H' + G.cB;
+          s += '<g' + (on ? '' : ' class="d-off"') + '><path class="d-wu" d="' + d + '"/><path class="d-w" d="' + d + '"/></g>';
+          if (on) s += '<path class="flow ' + b.role + '" d="' + d + '"/>';
+        }
+        s += '</g>';
+      }
+      s += '<rect class="d-hous" x="' + px + '" y="' + top + '" width="107" height="' + HH + '" rx="8"/>';
+      for (var q = 0; q < 8; q++) {
+        var yq = y0 + q * RH, pin = b.pins[7 - q];
+        if (q > 0) s += '<line class="d-sep" x1="' + (px + 6) + '" x2="' + (px + 101) + '" y1="' + (yq - RH / 2) + '" y2="' + (yq - RH / 2) + '"/>';
+        s += '<text class="d-ptxt" x="' + G.tx + '" y="' + yq + '">' + esc(pin) + '</text><circle class="d-pdot" cx="' + G.hx + '" cy="' + yq + '" r="3.6"/>';
+      }
+      if (!used) s += '<text class="d-note" x="' + G.noteX + '" y="' + (y0 + 3.5 * RH + 4) + '">не используется</text>';
+    }
+
+    /* header row: caption over the connector, "Шина X" tab on top of the plug, both on one line */
+    var yh = top - TAB_H / 2, cx = px + 53.5;
+    s += '<text class="d-sub" x="' + G.capX + '" y="' + yh + '" text-anchor="' + G.capAnchor + '" dominant-baseline="central">' + g.name + '</text>';
+    s += '<g class="d-buslbl" data-cx="' + cx + '" data-top="' + (top - TAB_H) + '" data-bot="' + (top + 1) + '"><path class="d-tab"/>' +
+         '<text class="d-bus ' + b.role + '" x="' + cx + '" y="' + yh + '">Шина ' + b.id + '</text></g>';
+    return s + '</g>';
+  }
+
+  /* the tab is sized to the real text width, so it also fits when the font changes */
+  function fitLabels() {
+    var gs = svg.querySelectorAll('.d-buslbl');
+    for (var i = 0; i < gs.length; i++) {
+      try {
+        var g = gs[i], w = Math.ceil(g.querySelector('text').getComputedTextLength()) + 26;
+        if (w < 40) continue;
+        var cx = +g.dataset.cx, top = +g.dataset.top, bot = +g.dataset.bot, x0 = cx - w / 2, x1 = cx + w / 2, r = 8;
+        g.querySelector('path').setAttribute('d', 'M' + x0 + ' ' + bot + 'V' + (top + r) + 'Q' + x0 + ' ' + top + ' ' + (x0 + r) + ' ' + top +
+          'H' + (x1 - r) + 'Q' + x1 + ' ' + top + ' ' + x1 + ' ' + (top + r) + 'V' + bot);
+      } catch (e) {}
+    }
+  }
+
+  function panelHead(cx, role, label) {
+    return '<text class="d-cap" x="' + cx + '" y="172">Проверяемая</text><text class="d-cap" x="' + cx + '" y="189">макетка</text>' +
+      '<rect class="d-rolebg ' + role + '" x="' + (cx - 34) + '" y="197" width="68" height="20" rx="10"/>' +
+      '<text class="d-roletxt ' + role + '" x="' + cx + '" y="207.5">' + label + '</text>';
+  }
+
+  function render() {
+    var s = '';
+    if (compact) {
+      s += '<text class="d-leg" x="8" y="16">Проверяемая макетка</text><text class="d-leg" x="384" y="16" text-anchor="end">Тестовая система</text>';
+      var T = 34;
+      BUSES.forEach(function (b) {
+        var g = GROUPS.filter(function (x) { return x.bus === b.id; })[0];
+        s += groupSVG(g, geoCompact(b, T + TAB_H + 13));
+        T += TAB_H + (isUsed(b) ? HH + 22 : 36 + 14);
+      });
+      svg.setAttribute('viewBox', '0 0 392 ' + Math.ceil(T));
+    } else {
+      s += '<rect class="d-panel" x="24" y="150" width="128" height="550" rx="14"/>';
+      s += '<rect class="d-panel" x="968" y="150" width="128" height="550" rx="14"/>';
+      s += panelHead(88, 'out', 'выходы') + panelHead(1032, 'in', 'входы');
+      s += BOARD;
+      GROUPS.forEach(function (g) { s += groupSVG(g, geoWide(g)); });
+      svg.setAttribute('viewBox', '0 0 1120 1790');
+    }
+    svg.innerHTML = s;
+    fitLabels();
+    svg.setAttribute('aria-label', 'Схема подключения шин: ' + PROJECTS[cur].name);
+  }
+
+  /* n = bus in focus (0 = all). hover = a preview that follows the mouse and does not change the chosen step */
+  function paint(n, hover) {
+    BUSES.forEach(function (b) {
+      var g = ge('g-' + b.id); if (!g) return;
+      g.setAttribute('class', 'grp' + (isUsed(b) ? '' : ' free') + (n === 0 ? '' : n === b.id ? (hover ? ' hot' : ' act') : ' off'));
+    });
+  }
+
+  function renderProjs() {
+    projsEl.innerHTML = PROJECTS.map(function (p, i) {
+      return '<button class="proj" type="button" data-i="' + i + '" aria-pressed="' + (i === cur) + '">' + esc(p.name) + '</button>';
+    }).join('');
+  }
+  function renderTabs() {
+    var used = usedIds();
+    var h = '<button class="tab" type="button" data-step="0" aria-pressed="' + (active === 0) + '">Все шины</button>';
+    BUSES.forEach(function (b) {
+      var u = used.indexOf(b.id) >= 0;
+      h += '<button class="tab' + (u ? '' : ' free') + '" type="button" data-step="' + b.id + '" aria-pressed="' + (active === b.id) + '"><i class="dot ' + b.role + '"></i>Шина ' + b.id + '</button>';
+    });
+    tabsEl.innerHTML = h;
+  }
+
+  function setActive(n) {
+    active = n;
+    paint(n);
+    renderTabs();
+  }
+
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    playBtn.textContent = 'Показать по шагам';
+    playBtn.setAttribute('aria-pressed', 'false');
+  }
+  function selectProject(i) {
+    cur = i; stop(); renderProjs(); render(); setActive(0); renderCmd();
+    try { location.hash = PROJECTS[i].id; } catch (e) {}
+  }
+
+  projsEl.addEventListener('click', function (e) {
+    var t = e.target.closest('.proj'); if (t) selectProject(+t.dataset.i);
+  });
+  tabsEl.addEventListener('click', function (e) {
+    var t = e.target.closest('.tab'); if (!t) return;
+    stop(); setActive(+t.dataset.step);
+  });
+  playBtn.addEventListener('click', function () {
+    if (timer) { stop(); return; }
+    var ids = usedIds(); if (!ids.length) return;
+    var n = 0;
+    setActive(ids[0]);
+    playBtn.textContent = 'Пауза';
+    playBtn.setAttribute('aria-pressed', 'true');
+    timer = setInterval(function () {
+      n++;
+      if (n >= ids.length) { stop(); setActive(0); return; }
+      setActive(ids[n]);
+    }, 4200);
+  });
+
+
+  /* ---------- hover / tap on a bus, phone layout ---------- */
+  var viewBtn = ge('view'), mq = window.matchMedia('(max-width: 720px)'), forceWide = false, compact = false;
+  var isMouse = function (e) { return !e.pointerType || e.pointerType === 'mouse'; };
+
+  function applyView() {
+    compact = mq.matches && !forceWide;
+    svg.classList.toggle('c', compact);
+    viewBtn.hidden = !mq.matches;
+    viewBtn.textContent = compact ? 'Показать полную схему с макеткой' : 'Показать упрощённую схему';
+  }
+  viewBtn.addEventListener('click', function () { forceWide = compact; applyView(); render(); paint(active); });
+  var onMq = function () { forceWide = false; applyView(); render(); paint(active); };
+  if (mq.addEventListener) mq.addEventListener('change', onMq); else mq.addListener(onMq);
+
+  svg.addEventListener('pointerover', function (e) {
+    if (!isMouse(e)) return;
+    var g = e.target.closest && e.target.closest('.grp');
+    if (g) paint(+g.dataset.bus, true); else paint(active);
+  });
+  svg.addEventListener('pointerleave', function (e) { if (isMouse(e)) paint(active); });
+  svg.addEventListener('click', function (e) {
+    var g = e.target.closest && e.target.closest('.grp'); if (!g) return;
+    var id = +g.dataset.bus;
+    stop(); setActive(active === id ? 0 : id);
+  });
+  tabsEl.addEventListener('pointerover', function (e) {
+    if (!isMouse(e)) return;
+    var t = e.target.closest('.tab'); if (t) paint(+t.dataset.step, true);
+  });
+  tabsEl.addEventListener('pointerleave', function (e) { if (isMouse(e)) paint(active); });
+
+  /* ---------- command generator ---------- */
+  var CMD = JSON.parse(ge('cmd-data').textContent);
+  var cmdOS = detectOS(), cmdPort = '', cmdFlags = {};
+
+  function detectOS() {
+    var s = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+    var id = /mac|darwin|iphone|ipad/i.test(s) ? 'mac' : /win/i.test(s) ? 'windows' : 'linux';
+    return CMD.os.some(function (o) { return o.id === id; }) ? id : CMD.os[0].id;
+  }
+  function osInfo() { return CMD.os.filter(function (o) { return o.id === cmdOS; })[0]; }
+  function shq(s) { return /\s/.test(s) ? '"' + s.replace(/"/g, '\\"') + '"' : s; }
+
+  function renderCmdStatic() {
+    ge('cmd-os').innerHTML = CMD.os.map(function (o) {
+      return '<button type="button" data-os="' + esc(o.id) + '" aria-pressed="' + (o.id === cmdOS) + '">' + esc(o.name) + '</button>';
+    }).join('');
+    var h = '', i = 0;
+    while (i < CMD.flags.length) {
+      var f = CMD.flags[i];
+      if (f.group) {
+        var inner = '<div class="gcap">' + esc(CMD.groups && CMD.groups[f.group] || '') + '</div>';
+        while (i < CMD.flags.length && CMD.flags[i].group === f.group) { inner += flagHTML(CMD.flags[i]); i++; }
+        h += '<div class="fgrp">' + inner + '</div>';
+      } else { h += flagHTML(f); i++; }
+    }
+    ge('cmd-flags').innerHTML = h;
+    syncPortField();
+  }
+  function flagHTML(f) {
+    return '<label class="flag"><input type="checkbox" data-flag="' + esc(f.flag) + '"' + (cmdFlags[f.flag] ? ' checked' : '') + '><b>' + esc(f.flag) + '</b><span>' + esc(f.desc) + '</span></label>';
+  }
+  function syncPortField() {
+    var inp = ge('cmd-port');
+    inp.placeholder = osInfo().port;
+    inp.value = cmdPort;
+  }
+
+  function cmdParts() {
+    var p = PROJECTS[cur], port = (cmdPort.trim() || osInfo().port);
+    var parts = [
+      { t: CMD.python, c: 'dim' },
+      { t: CMD.script, c: 'dim' },
+      p.config ? { t: CMD.configDir + p.config, c: 'cfg' } : { t: '[название конфига]', c: 'miss' },
+      { t: '--port', c: 'dim' },
+      { t: shq(port), c: 'port' }
+    ];
+    CMD.flags.forEach(function (f) { if (cmdFlags[f.flag]) parts.push({ t: f.flag, c: 'flag' }); });
+    return parts;
+  }
+
+  function renderCmd() {
+    var p = PROJECTS[cur], has = !!p.config;
+    var cfg = ge('cmd-cfg');
+    cfg.className = 'cfg' + (has ? '' : ' none');
+    cfg.textContent = has ? CMD.configDir + p.config : 'пока нет';
+    ge('cmd-note').textContent = has ? 'Конфиг подставляется по выбранной схеме: «' + p.name + '».'
+      : 'Для схемы «' + p.name + '» конфига пока нет, команду получится собрать, когда он появится.';
+    var parts = cmdParts();
+    ge('cmd-out').innerHTML = parts.map(function (x) { return '<span class="t-' + x.c + '">' + esc(x.t) + '</span>'; }).join(' ');
+    ge('cmd-copy').disabled = !has;
+    ge('cmd-copy').style.opacity = has ? '' : '.5';
+    ge('cmd-copy').style.cursor = has ? '' : 'not-allowed';
+    cmdText = parts.map(function (x) { return x.t; }).join(' ');
+  }
+  var cmdText = '', copyTimer = null;
+
+  function copyText(s) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(s);
+    return new Promise(function (ok, fail) {
+      var ta = document.createElement('textarea');
+      ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? ok() : fail(); } catch (e) { fail(e); }
+      document.body.removeChild(ta);
+    });
+  }
+
+  ge('cmd-os').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    cmdOS = b.dataset.os; cmdPort = '';          /* порт от другой ОС не подходит, берём стандартный */
+    renderCmdStatic(); renderCmd();
+  });
+  ge('cmd-port').addEventListener('input', function (e) { cmdPort = e.target.value; renderCmd(); });
+  ge('cmd-flags').addEventListener('change', function (e) {
+    var inp = e.target, flag = inp.dataset.flag; if (!flag) return;
+    cmdFlags[flag] = inp.checked;
+    var f = CMD.flags.filter(function (x) { return x.flag === flag; })[0];
+    if (inp.checked && f.group) {                /* флаги одной группы взаимоисключающие */
+      CMD.flags.forEach(function (x) { if (x.group === f.group && x.flag !== flag) cmdFlags[x.flag] = false; });
+      renderCmdStatic();
+    }
+    renderCmd();
+  });
+  ge('cmd-copy').addEventListener('click', function () {
+    var btn = ge('cmd-copy');
+    if (btn.disabled) return;
+    var done = function (txt) {
+      btn.textContent = txt; clearTimeout(copyTimer);
+      copyTimer = setTimeout(function () { btn.textContent = 'Скопировать'; }, 1800);
+    };
+    copyText(cmdText).then(function () { done('Скопировано'); }, function () {
+      var r = document.createRange(); r.selectNodeContents(ge('cmd-out'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      done('Выделено, нажмите Ctrl+C');
+    });
+  });
+
+  function fromHash() {
+    var id = '';
+    try { id = decodeURIComponent(location.hash.replace(/^#/, '')); } catch (e) {}
+    for (var i = 0; i < PROJECTS.length; i++) if (PROJECTS[i].id === id) return i;
+    return -1;
+  }
+  window.addEventListener('hashchange', function () {
+    var i = fromHash(); if (i >= 0 && i !== cur) { cur = i; stop(); renderProjs(); render(); setActive(0); renderCmd(); }
+  });
+
+  var h0 = fromHash(); if (h0 >= 0) cur = h0;
+  renderCmdStatic();
+  applyView();
+  renderProjs(); render(); setActive(0); renderCmd();
+  if (document.fonts) { document.fonts.addEventListener('loadingdone', fitLabels); document.fonts.ready.then(fitLabels); }
+})();
+</script>
+
+</body></html>
